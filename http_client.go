@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"bytes"
 )
 
 type RequestParams struct {
@@ -14,6 +15,7 @@ type RequestParams struct {
 	NoAutoHeaders       bool
 	NoUserAgent         bool
 	Body                []byte
+	ShowRequest         bool
 	Timeout             time.Duration
 	AddContentLength    bool
 }
@@ -99,6 +101,20 @@ func DoRequest(params *RequestParams) (*HTTPMessage, error) {
 	targetAddr := params.ConnectAddr
 	if targetAddr == "" {
 		targetAddr = params.Target.Host
+	}
+
+	if params.ShowRequest {
+		// Print the request
+		for _, h := range headers {
+			fmt.Printf("%s: %s\n", h.Name, h.Value)
+		}
+
+		fmt.Println()
+		lines := bytes.Split(params.Body, []byte{'\n'})
+		for _, l := range lines {
+			fmt.Println(string(l))
+		}
+		fmt.Println()
 	}
 
 	switch proto {

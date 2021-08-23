@@ -27,6 +27,7 @@ func main() {
 		autoContentLength bool
 		bodyToSend        []byte
 		bodyLines         int
+		showRequest       bool
 		// detect subcommand options
 		verbose     bool
 		threads     int
@@ -83,6 +84,7 @@ func main() {
 				NoUserAgent:      noUserAgent,
 				AddContentLength: autoContentLength,
 				Body:             bodyToSend,
+				ShowRequest:      showRequest,
 				Timeout:          timeout,
 			}, bodyLines)
 			return nil
@@ -151,6 +153,7 @@ func main() {
 	requestCmd.Flags().StringVar(&bodyFile, "body-file", "", "read request body from this file")
 	requestCmd.Flags().BoolVar(&noAutoHeaders, "no-auto-headers", false, "don't send pseudo-headers automatically")
 	requestCmd.Flags().BoolVar(&noUserAgent, "no-user-agent", false, "don't send user-agent")
+	requestCmd.Flags().BoolVar(&showRequest, "show-request", false, "output the request(s) sent")
 	requestCmd.Flags().BoolVar(&autoContentLength, "auto-content-length", false, "add \"content-length\" header with body size")
 	requestCmd.Flags().IntVar(&bodyLines, "body-lines", 10, "how many body lines to print (-1 means no limit)")
 
