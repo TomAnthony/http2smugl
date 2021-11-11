@@ -23,6 +23,7 @@ type RequestParams struct {
 type HTTPMessage struct {
 	Headers Headers
 	Body    []byte
+	Trailers Headers
 }
 
 type ConnDropError struct {
@@ -61,6 +62,22 @@ func DoRequest(params *RequestParams) (*HTTPMessage, error) {
 	}
 
 	var headers Headers
+	var trailers Headers
+	trailers = Headers{
+		// {"get /headers_log.php?foo", " HTTP/1.1"},
+		// {"host", "www.tomanthony.co.uk"},
+		// {"get /robots.txt?foo", " HTTP/1.1"},
+		// {"host", "www.apple.com"},
+		// {"debugh2", "value"},
+		// {"x:", " "},
+		// {"get /headers_log.php?moof\r", " "},
+		// {"host", "www.tomanthony.co.uk"},
+		// {":authority", "takeawaypay.azurefd.net"},
+		{"xauthority", params.Target.Host},
+		{"xmethod", "GET"},
+		{"xpath", "/robots2.txt"},
+		{"xscheme", "https"},
+	}
 
 	if params.NoAutoHeaders {
 		headers = params.Headers
@@ -115,13 +132,18 @@ func DoRequest(params *RequestParams) (*HTTPMessage, error) {
 			fmt.Println(string(l))
 		}
 		fmt.Println()
+		for _, h := range trailers {
+			fmt.Printf("%s: %s\n", h.Name, h.Value)
+		}
+
+		fmt.Println()
 	}
 
 	switch proto {
 	case "http2":
-		return sendHTTP2Request(targetAddr, params.Target.Host, false, &HTTPMessage{headers, params.Body}, params.Timeout)
+		return sendHTTP2Request(targetAddr, params.Target.Host, false, &HTTPMessage{headers, params.Body, trailers}, params.Timeout)
 	case "http3":
-		return sendHTTP3Request(targetAddr, params.Target.Host, false, &HTTPMessage{headers, params.Body}, params.Timeout)
+		return sendHTTP3Request(targetAddr, params.Target.Host, false, &HTTPMessage{headers, params.Body, trailers}, params.Timeout)
 	default:
 		panic(fmt.Errorf("invalid proto: %#v", proto))
 	}

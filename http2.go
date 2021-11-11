@@ -108,9 +108,13 @@ func sendHTTP2Request(connectAddr, serverName string, noTLS bool, request *HTTPM
 }
 
 func prepareHTTP2Request(request *HTTPMessage) []byte {
-	var hpackBuf []byte
+	var hpackBufHeaders []byte
 	for i := range request.Headers {
-		hpackBuf = hpackAppendHeader(hpackBuf, &request.Headers[i])
+		hpackBufHeaders = hpackAppendHeader(hpackBufHeaders, &request.Headers[i])
+	}
+	var hpackBufTrailers []byte
+	for i := range request.Trailers {
+		hpackBufTrailers = hpackAppendHeader(hpackBufTrailers, &request.Trailers[i])
 	}
 
 	requestBuf := bytes.NewBuffer(nil)
@@ -125,12 +129,31 @@ func prepareHTTP2Request(request *HTTPMessage) []byte {
 
 	_ = framer.WriteWindowUpdate(0, (1<<30)-(1<<16)-1)
 
+
+	// _ = framer.WriteHeaders(http2.HeadersFrameParam{
+	// 	StreamID:      1,
+	// 	BlockFragment: hpackBufTrailers,
+	// 	EndStream:     false,
+	// 	EndHeaders:    true,
+	// })
+
 	_ = framer.WriteHeaders(http2.HeadersFrameParam{
 		StreamID:      1,
-		BlockFragment: hpackBuf,
-		EndStream:     len(request.Body) == 0,
-		EndHeaders:    true,
+		BlockFragment: hpackBufHeaders,
+		// EndStream:     (len(request.Body) == 0) && (len(request.Trailers) <= 0),
+		// EndStream:     len(request.Body) == 0,
+		EndStream:     false,
+		EndHeaders:    false,
 	})
+
+	if len(request.Trailers) > 0 {
+		_ = framer.WriteHeaders(http2.HeadersFrameParam{
+			StreamID:      1,
+			BlockFragment: hpackBufTrailers,
+			EndStream:     true,
+			EndHeaders:    true,
+		})
+	}
 
 	start := 0
 	for start < len(request.Body) {
@@ -138,9 +161,19 @@ func prepareHTTP2Request(request *HTTPMessage) []byte {
 		if end > len(request.Body) {
 			end = len(request.Body)
 		}
+		// _ = framer.WriteData(1, (end == len(request.Body)) && (len(request.Trailers) <= 0), request.Body[start:end])
 		_ = framer.WriteData(1, end == len(request.Body), request.Body[start:end])
 		start = end
 	}
+
+	// if len(request.Trailers) > 0 {
+	// 	_ = framer.WriteHeaders(http2.HeadersFrameParam{
+	// 		StreamID:      1,
+	// 		BlockFragment: hpackBufTrailers,
+	// 		EndStream:     true,
+	// 		EndHeaders:    true,
+	// 	})
+	// }
 
 	_ = framer.WriteSettingsAck()
 
